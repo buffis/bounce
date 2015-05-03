@@ -2,22 +2,54 @@ pico-8 cartridge // http://www.pico-8.com
 version 4
 __lua__
 
-MOVE_STEP = 5
-PADDLE_SIZE = 15
+move_step = 5
+paddle_size = 15
+cycle_color = 0
 
 -- 1 = title. 2 = game. 3 = gameover
-GAME_STATE = 1 
+game_state = 1 
+
+particles = {}
+function particle_spawn(x, y, vx, vy)
+	p = {x=x,y=y,vx=vx,vy=vy,ticks=10}
+	add(particles, p)
+end
+
+function p_move(p)
+	p.x+=p.vx
+	p.y+=p.vy
+	p.ticks-=1
+end
+function particles_move()
+	foreach(particles, p_move)
+end
+
+function particles_prune()
+	new_p = {}
+	for p in all(particles) do
+		if p.ticks > 0 then
+			add(new_p, p)
+		end
+	end
+	particles = new_p
+end
+
+function p_draw(p)
+	rectfill(p.x,p.y,p.x+1,p.y+1,cycle_color)
+end
+function particles_draw()
+	foreach(particles, p_draw)
+end
 
 function _init()
-	
 end
 
 function start_game()
-	w = { l={}, r={}, u={}, d={} }
+	w = {l={}, r={}, u={}, d={}} -- setup some structs for the walls
 	ballx = 14  bally = 34
-	ballvx = 3  ballvy = 1
+	ballvx = 1  ballvy = 3
 	x = 64 y = 64
-	GAME_STATE = 2
+	game_state = 2
 end
 
 function update_title()
@@ -29,39 +61,84 @@ function update_gameover()
 end
 
 function update_game()
-	-- Move ball
+	-- move ball
 	ballx += ballvx
 	bally += ballvy
 
-	-- Move paddles
- 	if (btn(0)) then x=x-MOVE_STEP end
-	if (btn(1)) then x=x+MOVE_STEP end
-	if (btn(2)) then y=y-MOVE_STEP end
-	if (btn(3)) then y=y+MOVE_STEP end
-	if x > 127 then x = 127 end
-	if x < 0 then x = 0 end
-	if y > 127 then y = 127 end
-	if y < 0 then y = 0 end
-
+	-- move paddles
+ 	if (btn(0)) then x=x-move_step end
+	if (btn(1)) then x=x+move_step end
+	if (btn(2)) then y=y-move_step end
+	if (btn(3)) then y=y+move_step end
+	x = max(x, 0)      y = max(y, 0)
+	x = min(x, 127)    y = min(y, 127)
+	
+	-- handle stuff happening
 	handle_paddle_hit()
 	handle_gameover()
 
-	-- Make walls in inactive direction
+	-- make walls in inactive direction
 	if ballvx > 0 then w.r.active=true else w.r.active=false end
 	if ballvx < 0 then w.l.active=true else w.l.active=false end
 	if ballvy > 0 then w.d.active=true else w.d.active=false end
 	if ballvy < 0 then w.u.active=true else w.u.active=false end
+
+	-- update particles
+	particles_move()
+	particles_prune()
 end
 
 function _update()
-	if GAME_STATE == 1     then update_title()
-	elseif GAME_STATE == 2 then update_game()
-	elseif GAME_STATE == 3 then update_gameover()
+	cycle_color += 1
+	if cycle_color == 16 then cycle_color = 0 end
+	
+	if game_state == 1     then update_title()
+	elseif game_state == 2 then update_game()
+	elseif game_state == 3 then update_gameover()
+	end
+end
+
+function create_bounce_particles(bounce_dir) -- numpad dirs
+	-- TODO: Clean
+	if bounce_dir == 8 then
+		particle_spawn(ballx, bally, 1, 5, 15)
+		particle_spawn(ballx, bally, -1, 5, 15)
+		particle_spawn(ballx, bally, 2, 4, 15)
+		particle_spawn(ballx, bally, -2, 8.5, 15)
+		particle_spawn(ballx, bally, 3, 2, 15)
+		particle_spawn(ballx, bally, -3, 3, 15)
+	end
+
+	if bounce_dir == 2 then
+		particle_spawn(ballx, bally, 1, -5, 15)
+		particle_spawn(ballx, bally, -1, -5, 15)
+		particle_spawn(ballx, bally, 2, -4, 15)
+		particle_spawn(ballx, bally, -2, -8.5, 15)
+		particle_spawn(ballx, bally, 3, -2, 15)
+		particle_spawn(ballx, bally, -3, -3, 15)
+	end
+
+	if bounce_dir == 6 then
+		particle_spawn(ballx, bally, -5,    1, 15)
+		particle_spawn(ballx, bally, -5,   -1, 15)
+		particle_spawn(ballx, bally, -4,    2, 15)
+		particle_spawn(ballx, bally, -8.5, -2, 15)
+		particle_spawn(ballx, bally, -2,    3, 15)
+		particle_spawn(ballx, bally, -3,   -3, 15)
+	end
+
+	if bounce_dir == 2 then
+		particle_spawn(ballx, bally, 5,    1, 15)
+		particle_spawn(ballx, bally, 5,   -1, 15)
+		particle_spawn(ballx, bally, 4,    2, 15)
+		particle_spawn(ballx, bally, 8.5, -2, 15)
+		particle_spawn(ballx, bally, 2,    3, 15)
+		particle_spawn(ballx, bally, 3,   -3, 15)
 	end
 end
 
 function draw_game()
-	-- Draw walls
+	-- draw walls
 	if (w.u.forced or not w.u.active) then 
 		rectfill(0,0,127,3,6)
 	end
@@ -75,53 +152,57 @@ function draw_game()
 		rectfill(124,0,127,127,6)
 	end
  
- 	-- Top paddle
- 	rectfill(x-PADDLE_SIZE,0,x+PADDLE_SIZE,3,6)
- 	-- Bottom paddle
- 	rectfill(x-PADDLE_SIZE,124,x+PADDLE_SIZE,127,6)
-	-- Left paddle
- 	rectfill(0,y-PADDLE_SIZE,3,y+PADDLE_SIZE,6)
- 	-- Bottom paddle
- 	rectfill(124,y-PADDLE_SIZE,127,y+PADDLE_SIZE,6)
+ 	-- top paddle
+ 	rectfill(x-paddle_size,0,x+paddle_size,3,6)
+ 	-- bottom paddle
+ 	rectfill(x-paddle_size,124,x+paddle_size,127,6)
+	-- left paddle
+ 	rectfill(0,y-paddle_size,3,y+paddle_size,6)
+ 	-- bottom paddle
+ 	rectfill(124,y-paddle_size,127,y+paddle_size,6)
 
- 	-- Ball
+ 	-- ball
  	circfill(ballx,bally,3,3)
+
+ 	-- particles
+ 	particles_draw()
 end
 
 function draw_title()
-	print("  bounce!\n")
-	print("  press arrow key to start.")
+	color(cycle_color)
+	print("press any key to play", 25, 70)
+
+	spr(1, 40, 50, 7, 2)
 end
 
 function draw_gameover()
-	print("  you lost!\n")
+	print("you lost!\n")
 end
 
 function _draw()
 	cls()
-	if     GAME_STATE == 1 then draw_title()
-	elseif GAME_STATE == 2 then draw_game()
-	elseif GAME_STATE == 3 then draw_gameover()
+	if     game_state == 1 then draw_title()
+	elseif game_state == 2 then draw_game()
+	elseif game_state == 3 then draw_gameover()
 	end
 end
 
-function get_dirs(pos, xory)
-	if (pos > (xory-PADDLE_SIZE) and pos < (xory+PADDLE_SIZE)) then
-		tmp = xory-PADDLE_SIZE
-		if     (pos < (tmp+4))  then return {-1, -3}
-		elseif (pos < (tmp+8))  then return {-2, -2}
-		elseif (pos < (tmp+13)) then return {-3, -1}
-		elseif (pos < (tmp+17)) then return {-3, nil}
-		elseif (pos < (tmp+21)) then return {-3, 1}
-		elseif (pos < (tmp+25)) then return {-2, 2}
-		else                         return {-1, 3}
+function get_dirs(pos, posv1, posv2, xory)
+	if (pos > (xory-paddle_size) and pos < (xory+paddle_size)) then
+		distance_mod = abs(xory-pos)/paddle_size
+		if pos == xory then
+			return {-posv2, posv1}
+		elseif pos < xory then
+			return {-posv2, posv1-distance_mod}
+		elseif pos > xory then
+			return {-posv2, posv1+distance_mod}
 		end
 	end
 end
 
 function handle_gameover()
 	if ballx < -10 or ballx > 137 or bally < -10 or bally > 137 then
-		GAME_STATE = 3
+		game_state = 3
 	end
 end
 
@@ -135,74 +216,85 @@ function maybe_force_vertical_walls()
 	if bally > 97 then w.d.forced = true end
 end
 
+bounced = false
 function handle_paddle_hit()
-	-- Paddle is 30 pixels wide
-	-- Hitboxes: [4][4][5][4][5][4][4]
+	bounced = false
 
-	-- Down
-	if (bally > 124) and (bally <= 130) then 
+	-- down
+	if ballvy > 0 and bally > 124 and bally <= 130 then 
 		if w.d.forced then
 			ballvy = -ballvy
 			w.d.forced = false
+			bounced = 2
 		else
 			maybe_force_horizontal_walls()
-			t = get_dirs(ballx, x)
+			t = get_dirs(ballx, ballvx, ballvy, x)
 			if t and t[1] != nil then ballvy = t[1] end
 			if t and t[2] != nil then ballvx = t[2] end
+			if t then bounced = 2 end
 		end
 	end
-	-- Up
-	if (bally < 5) and (bally >= -5) then
+	-- up
+	if ballvy < 0 and bally < 5 and bally >= -5 then
 		if w.u.forced then
 			ballvy = -ballvy
 			w.u.forced = false
+			bounced = 8
 		else
 			maybe_force_horizontal_walls()
-			t = get_dirs(ballx, x)
-			if t and t[1] != nil then ballvy = -t[1] end
-			if t and t[2] != nil then ballvx =  t[2] end
+			t = get_dirs(ballx, ballvx, ballvy, x)
+			if t and t[1] != nil then ballvy = t[1] end
+			if t and t[2] != nil then ballvx = t[2] end
+			if t then bounced = 8 end
 		end
 	end
-	-- Right
-	if (ballx > 122) and (ballx <= 130) then
+	-- right
+	if ballvx > 0 and ballx > 122 and ballx <= 130 then
 		if w.r.forced then
 			ballvx = -ballvx
 			w.r.forced = false
+			bounced = 6
 		else
 			maybe_force_vertical_walls()		
-			t = get_dirs(bally, y)
+			t = get_dirs(bally, ballvy, ballvx, y)
 			if t and t[1] != nil then ballvx = t[1] end
 			if t and t[1] != nil then ballvy = t[2] end
+			if t then bounced = 6 end
 		end
 	end
-	-- Left
-	if (ballx < 5) and (ballx >= -5) then
+	-- left
+	if ballvx < 0 and ballx < 5 and ballx >= -5 then
 		if w.l.forced then
 			ballvx = -ballvx
 			w.l.forced = false
+			bounced = 4
 		else
 			maybe_force_vertical_walls()
-			t = get_dirs(bally, y)
-			if t and t[1] != nil then ballvx = -t[1] end
+			t = get_dirs(bally, ballvy, ballvx, y)
+			if t and t[1] != nil then ballvx = t[1] end
 			if t and t[1] != nil then ballvy =  t[2] end
+			if t then bounced = 4 end
 		end
 	end
+
+	if bounced then create_bounce_particles(bounced) end
 end
 
 
+
 __gfx__
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000002222e000022222e0002e002e0002e0002e0002222e0002222e000000000000000000000000000000000000000000000000000000000000000000000
+00000000222222e002222222e022e0022e0222e0022e0222222e0222222e00000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0222e0222e222e022e0022e02222e022e0222e22e022e000000000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0022e022e0022e022e0022e02222e022e022e0000022e000000000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0222e022e0022e022e0022e022222e22e022e0000022e000000000000000000000000000000000000000000000000000000000000000000000000
+00000000222222e0022e0022e022e0022e022222e22e022e00000222222e00000000000000000000000000000000000000000000000000000000000000000000
+00000000222222e0022e0022e022e0022e022e22e22e022e00000222222e00000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0222e022e0022e022e0022e022e22222e022e0000022e000000000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0022e022e0022e022e0022e022e02222e022e0000022e000000000000000000000000000000000000000000000000000000000000000000000000
+0000000022e0222e0222e222e0222e222e022e02222e0222e22e022e000000000000000000000000000000000000000000000000000000000000000000000000
+00000000222222e002222222e02222222e022e00222e0222222e0222222e00000000000000000000000000000000000000000000000000000000000000000000
+0000000002222e000022222e00022222e0002e0002e0002222e00022222e00000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
