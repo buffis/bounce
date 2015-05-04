@@ -10,8 +10,8 @@ cycle_color = 0
 game_state = 1 
 
 particles = {}
-function particle_spawn(x, y, vx, vy)
-	p = {x=x,y=y,vx=vx,vy=vy,ticks=10}
+function particle_spawn(x, y, vx, vy, ticks, size)
+	p = {x=x,y=y,vx=vx,vy=vy,ticks=ticks,size=size}
 	add(particles, p)
 end
 
@@ -35,7 +35,7 @@ function particles_prune()
 end
 
 function p_draw(p)
-	rectfill(p.x,p.y,p.x+1,p.y+1,cycle_color)
+	rectfill(p.x,p.y,p.x+p.size,p.y+p.size,rnd(16))
 end
 function particles_draw()
 	foreach(particles, p_draw)
@@ -64,6 +64,7 @@ function update_game()
 	-- move ball
 	ballx += ballvx
 	bally += ballvy
+	particle_spawn(ballx-ballvx, bally-ballvy, (-ballvx-3.5+rnd(7))/2, (-ballvy-3.5+rnd(7))/2, 33, 1)
 
 	-- move paddles
  	if (btn(0)) then x=x-move_step end
@@ -101,43 +102,46 @@ end
 function create_bounce_particles(bounce_dir) -- numpad dirs
 	-- TODO: Clean
 	if bounce_dir == 8 then
-		particle_spawn(ballx, bally, 1, 5, 15)
-		particle_spawn(ballx, bally, -1, 5, 15)
-		particle_spawn(ballx, bally, 2, 4, 15)
-		particle_spawn(ballx, bally, -2, 8.5, 15)
-		particle_spawn(ballx, bally, 3, 2, 15)
-		particle_spawn(ballx, bally, -3, 3, 15)
+		particle_spawn(ballx, bally, 1, 5, 15, 3)
+		particle_spawn(ballx, bally, -1, 5, 15, 3)
+		particle_spawn(ballx, bally, 2, 4, 15, 3)
+		particle_spawn(ballx, bally, -2, 8.5, 15, 3)
+		particle_spawn(ballx, bally, 3, 2, 15, 3)
+		particle_spawn(ballx, bally, -3, 3, 15, 3)
 	end
 
 	if bounce_dir == 2 then
-		particle_spawn(ballx, bally, 1, -5, 15)
-		particle_spawn(ballx, bally, -1, -5, 15)
-		particle_spawn(ballx, bally, 2, -4, 15)
-		particle_spawn(ballx, bally, -2, -8.5, 15)
-		particle_spawn(ballx, bally, 3, -2, 15)
-		particle_spawn(ballx, bally, -3, -3, 15)
+		particle_spawn(ballx, bally, 1, -5, 15, 3)
+		particle_spawn(ballx, bally, -1, -5, 15, 3)
+		particle_spawn(ballx, bally, 2, -4, 15, 3)
+		particle_spawn(ballx, bally, -2, -8.5, 15, 3)
+		particle_spawn(ballx, bally, 3, -2, 15, 3)
+		particle_spawn(ballx, bally, -3, -3, 15, 3)
 	end
 
 	if bounce_dir == 6 then
-		particle_spawn(ballx, bally, -5,    1, 15)
-		particle_spawn(ballx, bally, -5,   -1, 15)
-		particle_spawn(ballx, bally, -4,    2, 15)
-		particle_spawn(ballx, bally, -8.5, -2, 15)
-		particle_spawn(ballx, bally, -2,    3, 15)
-		particle_spawn(ballx, bally, -3,   -3, 15)
+		particle_spawn(ballx, bally, -5,    1, 15, 3)
+		particle_spawn(ballx, bally, -5,   -1, 15, 3)
+		particle_spawn(ballx, bally, -4,    2, 15, 3)
+		particle_spawn(ballx, bally, -8.5, -2, 15, 3)
+		particle_spawn(ballx, bally, -2,    3, 15, 3)
+		particle_spawn(ballx, bally, -3,   -3, 15, 3)
 	end
 
 	if bounce_dir == 2 then
-		particle_spawn(ballx, bally, 5,    1, 15)
-		particle_spawn(ballx, bally, 5,   -1, 15)
-		particle_spawn(ballx, bally, 4,    2, 15)
-		particle_spawn(ballx, bally, 8.5, -2, 15)
-		particle_spawn(ballx, bally, 2,    3, 15)
-		particle_spawn(ballx, bally, 3,   -3, 15)
+		particle_spawn(ballx, bally, 5,    1, 15, 3)
+		particle_spawn(ballx, bally, 5,   -1, 15, 3)
+		particle_spawn(ballx, bally, 4,    2, 15, 3)
+		particle_spawn(ballx, bally, 8.5, -2, 15, 3)
+		particle_spawn(ballx, bally, 2,    3, 15, 3)
+		particle_spawn(ballx, bally, 3,   -3, 15, 3)
 	end
 end
 
 function draw_game()
+	-- draw background
+	draw_bg()
+
 	-- draw walls
 	if (w.u.forced or not w.u.active) then 
 		rectfill(0,0,127,3,6)
@@ -166,17 +170,41 @@ function draw_game()
 
  	-- particles
  	particles_draw()
+
+ 	-- beams
+ 	draw_beams()
 end
 
 function draw_title()
 	color(cycle_color)
 	print("press any key to play", 25, 70)
 
-	spr(1, 40, 50, 7, 2)
+	spr(1, 40, 50, 7, 3)
 end
 
 function draw_gameover()
 	print("you lost!\n")
+end
+
+bg_counter = 0
+function draw_bg()
+	for j=-120,120,10 do
+		for i=-120,120,10 do
+			rectfill(i+bg_counter, j+bg_counter*2, i+7+bg_counter, j+7+bg_counter*2, flr(rnd(2)))
+		end
+	end
+	bg_counter+=1
+	if bg_counter == 10 then bg_counter = 0 end
+end
+
+function draw_beams()
+	for i=5,122,2 do
+		if rnd(1) > 0.5 then
+			diff = flr(rnd(3))-1
+			rectfill(x+diff, i, x+diff, i, 12)
+			rectfill(i, y+diff, i, y+diff, 12)
+		end
+	end
 end
 
 function _draw()
