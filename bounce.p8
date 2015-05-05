@@ -119,41 +119,18 @@ function _update()
 end
 
 function create_bounce_particles(bounce_dir) -- numpad dirs
-	-- todo: clean
-	if bounce_dir == 8 then
-		particle_spawn(ballx, bally, 1, 5, 15, 3)
-		particle_spawn(ballx, bally, -1, 5, 15, 3)
-		particle_spawn(ballx, bally, 2, 4, 15, 3)
-		particle_spawn(ballx, bally, -2, 8.5, 15, 3)
-		particle_spawn(ballx, bally, 3, 2, 15, 3)
-		particle_spawn(ballx, bally, -3, 3, 15, 3)
-	end
-
-	if bounce_dir == 2 then
-		particle_spawn(ballx, bally, 1, -5, 15, 3)
-		particle_spawn(ballx, bally, -1, -5, 15, 3)
-		particle_spawn(ballx, bally, 2, -4, 15, 3)
-		particle_spawn(ballx, bally, -2, -8.5, 15, 3)
-		particle_spawn(ballx, bally, 3, -2, 15, 3)
-		particle_spawn(ballx, bally, -3, -3, 15, 3)
-	end
-
-	if bounce_dir == 6 then
-		particle_spawn(ballx, bally, -5,    1, 15, 3)
-		particle_spawn(ballx, bally, -5,   -1, 15, 3)
-		particle_spawn(ballx, bally, -4,    2, 15, 3)
-		particle_spawn(ballx, bally, -8.5, -2, 15, 3)
-		particle_spawn(ballx, bally, -2,    3, 15, 3)
-		particle_spawn(ballx, bally, -3,   -3, 15, 3)
-	end
-
-	if bounce_dir == 2 then
-		particle_spawn(ballx, bally, 5,    1, 15, 3)
-		particle_spawn(ballx, bally, 5,   -1, 15, 3)
-		particle_spawn(ballx, bally, 4,    2, 15, 3)
-		particle_spawn(ballx, bally, 8.5, -2, 15, 3)
-		particle_spawn(ballx, bally, 2,    3, 15, 3)
-		particle_spawn(ballx, bally, 3,   -3, 15, 3)
+	for i=-3,3 do
+		v = 4+rnd(2)-abs(i)
+		if bounce_dir == "up" then
+			vx=i vy=v
+		elseif bounce_dir == "down" then
+			vx=i vy=-v
+		elseif bounce_dir == "left" then
+			vx=v vy=i
+		elseif bounce_dir == "right" then
+			vx=-v vy=i
+		end
+		particle_spawn(ballx, bally, vx, vy, 15, 3)
 	end
 end
 
@@ -310,13 +287,13 @@ function handle_paddle_hit()
 		if w.d.forced then
 			ballvy = -ballvy
 			w.d.forced = false
-			bounced = 2
+			bounced = "down"
 		else
 			maybe_force_horizontal_walls()
 			t = get_dirs(ballx, ballvx, ballvy, x)
 			if t and t[1] != nil then ballvy = t[1] end
 			if t and t[2] != nil then ballvx = t[2] end
-			if t then bounced = 2 end
+			if t then bounced = "down" end
 		end
 	end
 	-- up
@@ -324,13 +301,13 @@ function handle_paddle_hit()
 		if w.u.forced then
 			ballvy = -ballvy
 			w.u.forced = false
-			bounced = 8
+			bounced = "up"
 		else
 			maybe_force_horizontal_walls()
 			t = get_dirs(ballx, ballvx, ballvy, x)
 			if t and t[1] != nil then ballvy = t[1] end
 			if t and t[2] != nil then ballvx = t[2] end
-			if t then bounced = 8 end
+			if t then bounced = "up" end
 		end
 	end
 	-- right
@@ -338,13 +315,13 @@ function handle_paddle_hit()
 		if w.r.forced then
 			ballvx = -ballvx
 			w.r.forced = false
-			bounced = 6
+			bounced = "right"
 		else
 			maybe_force_vertical_walls()		
 			t = get_dirs(bally, ballvy, ballvx, y)
 			if t and t[1] != nil then ballvx = t[1] end
 			if t and t[1] != nil then ballvy = t[2] end
-			if t then bounced = 6 end
+			if t then bounced = "right" end
 		end
 	end
 	-- left
@@ -352,13 +329,13 @@ function handle_paddle_hit()
 		if w.l.forced then
 			ballvx = -ballvx
 			w.l.forced = false
-			bounced = 4
+			bounced = "left"
 		else
 			maybe_force_vertical_walls()
 			t = get_dirs(bally, ballvy, ballvx, y)
 			if t and t[1] != nil then ballvx = t[1] end
 			if t and t[1] != nil then ballvy =  t[2] end
-			if t then bounced = 4 end
+			if t then bounced = "left" end
 		end
 	end
 
