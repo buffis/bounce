@@ -9,9 +9,10 @@ cycle_color = 0
 -- 1 = title. 2 = game. 3 = gameover
 game_state = 1 
 
-targetx=0
-targety=0
-target_score = 0
+targetx = 0 targety = 0
+score = 0
+highscore = 0
+input_wait_time = 10
 
 particles = {}
 function particle_spawn(x, y, vx, vy, ticks, size)
@@ -54,16 +55,25 @@ function start_game()
 	ballvx = 1  ballvy = 3
 	x = 64 y = 64
 	game_state = 2
-	target_score = 0
+	score = 0
 	spawn_target()
+	new_highscore = false
 end
 
 function update_title()
-	if btn(0) then start_game() end
+	if input_wait_time == 0 then
+		if btn(0) or btn(1) or btn(2) or btn(3) then start_game() end
+	else
+		input_wait_time -= 1
+	end
 end
 
 function update_gameover()
-	if btn(0) then start_game() end
+	if input_wait_time == 0 then
+		if btn(0) or btn(1) or btn(2) or btn(3) then start_game() end
+	else
+		input_wait_time -= 1
+	end
 end
 
 function update_game()
@@ -185,7 +195,7 @@ function draw_game()
 
  	-- draw target
  	draw_target()
- 	print(target_score, 6+rnd(2), 6+rnd(2))
+ 	print(score, 6+rnd(2), 6+rnd(2))
 end
 
 function draw_title()
@@ -196,11 +206,18 @@ function draw_title()
 end
 
 function draw_gameover()
-	color(cycle_color)
-	print("you lost!\n", 50, 50)
 	color(7)
+	print("you lost!\n", 50, 50)
 	print("score:", 52, 60)
-	print(target_score, 78, 60)
+	print(score, 78, 60)
+	if new_highscore then
+		color(cycle_color)
+		print("new highscore:", 38, 70)
+		print(highscore, 96, 70)
+	else
+		print("highscore:", 45, 70)
+		print(highscore, 87, 70)
+	end
 end
 
 bg_counter = 0
@@ -237,7 +254,11 @@ end
 function handle_target_hit()
 	-- refine collision check
 	if x > (targetx-3) and x < (targetx+13) and y > (targety-3) and y < (targety+13) then
-		target_score += 1
+		score += 1
+		if score > highscore then
+			highscore = score
+			new_highscore = true
+		end
 		spawn_target()
 	end
 end
@@ -266,6 +287,7 @@ end
 function handle_gameover()
 	if ballx < -10 or ballx > 137 or bally < -10 or bally > 137 then
 		game_state = 3
+		input_wait_time = 30
 	end
 end
 
