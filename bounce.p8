@@ -2,34 +2,29 @@ pico-8 cartridge // http://www.pico-8.com
 version 4
 __lua__
 
+-- CONSTANTS
 move_step = 5
 paddle_size = 15
-cycle_color = 0
 
--- 1 = title. 2 = game. 3 = gameover
-game_state = 1 
-
-targetx = 0 targety = 0
-score = 0
-highscore = 0
-input_wait_time = 10
+-- PARTICLE ENGINE --
 
 particles = {}
+
 function particle_spawn(x, y, vx, vy, ticks, size)
 	p = {x=x,y=y,vx=vx,vy=vy,ticks=ticks,size=size}
 	add(particles, p)
 end
 
-function p_move(p)
-	p.x+=p.vx
-	p.y+=p.vy
-	p.ticks-=1
-end
 function particles_move()
+	function p_move(p)
+		p.x+=p.vx
+		p.y+=p.vy
+		p.ticks-=1
+	end
 	foreach(particles, p_move)
 end
 
-function particles_prune()
+function particles_prune() -- TODO: optimize maybe?
 	new_p = {}
 	for p in all(particles) do
 		if p.ticks > 0 then
@@ -39,18 +34,24 @@ function particles_prune()
 	particles = new_p
 end
 
-function p_draw(p)
-	rectfill(p.x,p.y,p.x+p.size,p.y+p.size,rnd(16))
-end
 function particles_draw()
+	function p_draw(p)
+		rectfill(p.x,p.y,p.x+p.size,p.y+p.size,rnd(16))
+	end
 	foreach(particles, p_draw)
 end
 
+-- END OF PARTICLE ENGINE --
+
 function _init()
+	cycle_color = 0
+	highscore = 0
+	input_wait_time = 10
+	game_state = 1  -- 1 = title 2 = game 3 = gameover
 end
 
 function start_game()
-	w = {l={}, r={}, u={}, d={}} -- setup some structs for the walls
+	w = {l={}, r={}, u={}, d={}}
 	ballx = 14  bally = 34
 	ballvx = 1  ballvy = 3
 	x = 64 y = 64
@@ -60,15 +61,7 @@ function start_game()
 	new_highscore = false
 end
 
-function update_title()
-	if input_wait_time == 0 then
-		if btn(0) or btn(1) or btn(2) or btn(3) then start_game() end
-	else
-		input_wait_time -= 1
-	end
-end
-
-function update_gameover()
+function update_title_or_gameover()
 	if input_wait_time == 0 then
 		if btn(0) or btn(1) or btn(2) or btn(3) then start_game() end
 	else
@@ -112,27 +105,13 @@ function _update()
 	cycle_color += 1
 	if cycle_color == 16 then cycle_color = 0 end
 	
-	if game_state == 1     then update_title()
+	if game_state == 1     then update_title_or_gameover()
 	elseif game_state == 2 then update_game()
-	elseif game_state == 3 then update_gameover()
+	elseif game_state == 3 then update_title_or_gameover()
 	end
 end
 
-function create_bounce_particles(bounce_dir) -- numpad dirs
-	for i=-3,3 do
-		v = 4+rnd(2)-abs(i)
-		if bounce_dir == "up" then
-			vx=i vy=v
-		elseif bounce_dir == "down" then
-			vx=i vy=-v
-		elseif bounce_dir == "left" then
-			vx=v vy=i
-		elseif bounce_dir == "right" then
-			vx=-v vy=i
-		end
-		particle_spawn(ballx, bally, vx, vy, 15, 3)
-	end
-end
+
 
 function draw_game()
 	-- draw background
@@ -178,7 +157,6 @@ end
 function draw_title()
 	color(cycle_color)
 	print("press any key to play", 25, 70)
-
 	spr(1, 40, 50, 7, 2)
 end
 
@@ -199,7 +177,6 @@ end
 
 bg_counter = 0
 function draw_bg()
-	
 	for j=-120,120,10 do
 		for i=-120,120,10 do
 			rectfill(i+bg_counter, j+bg_counter*2, i+7+bg_counter, j+7+bg_counter*2, flr(rnd(2)))
@@ -229,7 +206,6 @@ function draw_target()
 end
 
 function handle_target_hit()
-	-- refine collision check
 	if x > (targetx-3) and x < (targetx+13) and y > (targety-3) and y < (targety+13) then
 		score += 1
 		if score > highscore then
@@ -280,6 +256,22 @@ end
 
 bounced = false
 function handle_paddle_hit()
+	function create_bounce_particles(bounce_dir) -- numpad dirs
+		for i=-3,3 do
+			v = 4+rnd(2)-abs(i)
+			if bounce_dir == "up" then
+				vx=i vy=v
+			elseif bounce_dir == "down" then
+				vx=i vy=-v
+			elseif bounce_dir == "left" then
+				vx=v vy=i
+			elseif bounce_dir == "right" then
+				vx=-v vy=i
+			end
+			particle_spawn(ballx, bally, vx, vy, 15, 3)
+		end
+	end
+
 	bounced = false
 
 	-- down
