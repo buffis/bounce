@@ -157,7 +157,7 @@ end
 
 function draw_title()
 	color(cycle_color)
-	print("press any key to play", 25, 70)
+	print("press any arrow key to play", 10, 70)
 	spr(1, 40, 50, 7, 2)
 end
 
